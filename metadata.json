@@ -1,0 +1,6 @@
+{
+  "name": "Video Lipsync Studio",
+  "description": "Create lifelike talking videos from a single image with multiple characters using Gemini Veo. Define faces and assign scripts to generate lip-synced video conversations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
