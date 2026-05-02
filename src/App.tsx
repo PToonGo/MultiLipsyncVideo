@@ -138,15 +138,16 @@ export default function App() {
       characterId: characters[0].id, 
       text: '',
       voiceStyle: voiceStyles[0],
-      voiceAccent: 'natural'
-    }]);
+      ageRange: 'middle',
+      accentDetail: 'north-std'
+    } as ScriptLine]);
   };
 
   const updateScriptLine = (id: string, text: string) => {
     setScriptLines(scriptLines.map(line => line.id === id ? { ...line, text } : line));
   };
 
-  const updateScriptVoice = (id: string, field: 'voiceStyle' | 'voiceAccent', value: any) => {
+  const updateScriptField = (id: string, field: keyof ScriptLine, value: any) => {
     setScriptLines(scriptLines.map(line => line.id === id ? { ...line, [field]: value } : line));
   };
 
@@ -188,30 +189,40 @@ export default function App() {
 
       const fullScript = scriptLines.map(line => {
         const char = characters.find(c => c.id === line.characterId);
-        const accent = {
-          'natural': 'giọng và accent mẫu',
-          'north': 'giọng và accent miền Bắc Việt Nam',
-          'hue': 'giọng và accent tỉnh Huế Việt Nam',
-          'central': 'giọng và accent miền Trung Việt Nam',
-          'south': 'giọng và accent miền Tây Nam Bộ Việt Nam'
-        }[line.voiceAccent];
-        
-        return `${char?.name} (Giọng style ${line.voiceStyle}, ${accent}): ${line.text}`;
-      }).join('\n');
+        const accentText = {
+          'north-std': 'Bắc phổ thông (Vietnamese Standard Northern Accent)',
+          'north-hn': 'Hà Nội chuẩn (Vietnamese Hanoi Accent)',
+          'central-hue': 'Huế đặc trưng (Vietnamese Central Hue Accent)',
+          'south-hcm': 'Sài Gòn phổ thông (Vietnamese Southern Ho Chi Minh City Accent)',
+          'south-sw': 'Miền Tây/Cà Mau (Vietnamese South Western Ca Mau Accent)'
+        }[line.accentDetail];
 
-      const prompt = `Generate a high-quality video using the provided image as the starting frame.
-There are multiple characters in the scene, identified as follows:
+        const ageText = {
+          'old': 'Người già (old adult)',
+          'middle': 'Trung niên (middle-aged)',
+          'youth': 'Trẻ trung (youthful)'
+        }[line.ageRange];
+        
+        return `[ACTOR: ${char?.name}] (Bounding Box: [x:${char?.box.x}%, y:${char?.box.y}%])
+Voice Specs: ${ageText}, Style: ${line.voiceStyle}, Exact Regional Accent: ${accentText}.
+Dialogue: "${line.text}"`;
+      }).join('\n\n');
+
+      const prompt = `Generate a high-quality video using the provided image as the starting frame. 
+CRITICAL: Use Gemini 3.1 TTS parameters for precise vocal synthesis.
+Each actor identified below must speak their dialogue with exact lipsync and a voice that matches their regional accent and age trait.
+
+SCENE CONTEXT:
 ${characterContext}
 
-The video should depict a conversation based on this script:
+SCRIPT & PERFORMANCE INSTRUCTIONS:
 ${fullScript}
 
-Key Requirements:
-1. Maintain the identity and appearance of each character as shown in their defined bounding boxes.
-2. Animate the characters with realistic lip synchronization that perfectly matches the script lines they speak.
-3. Ensure natural facial expressions and slight body movements to make the dialogue feel life-like.
-4. The transitions between speakers should be smooth.
-5. The output should be a coherent cinematic sequence where each character speaks their assigned lines in the order provided.`;
+TECHNICAL REQUIREMENTS:
+1. Ensure character identification is precise based on the provided bounding boxes.
+2. Lipsync must be Frame-Accurate.
+3. The specified regional Vietnamese accents (Bắc, Trung, Huế, Nam, Miền Tây) must be implemented with native-level accuracy.
+4. Maintain visual character consistency throughout the spoken sequence.`;
 
       const imageBytes = image.split(',')[1];
       const mimeType = image.split(';')[0].split(':')[1];
@@ -304,9 +315,9 @@ Key Requirements:
           <motion.h1 
             whileHover={{ scale: 1.2 }}
             transition={{ type: "spring", stiffness: 300, damping: 10 }}
-            className="text-[42pt] font-black tracking-tighter uppercase italic neon-text-purple cursor-default"
+            className="text-[36px] font-black tracking-tighter uppercase italic neon-text-purple cursor-default origin-left flex items-center"
           >
-            📽️ VIDEO LIPSYNC STUDIO
+            <span className="text-[48pt] mr-4">🫦</span> VIDEO LIPSYNC STUDIO
           </motion.h1>
         </div>
         
@@ -360,7 +371,9 @@ Key Requirements:
         <section className="flex-1 flex flex-col gap-4 bg-[#101010] p-6 rounded-[2.5rem] border border-white/5 shadow-inner">
           <div className="flex justify-between items-end px-1">
             <div>
-              <h2 className="text-xl font-black tracking-tight uppercase">🖼️ Scene Composer</h2>
+              <h2 className="text-xl font-black tracking-tight uppercase flex items-center gap-3">
+                <span className="text-[24pt]">🛤️</span> SCENE COMPOSER
+              </h2>
               <p className="text-xs text-slate-500 font-medium">Define character frames for Gemini Veo rendering</p>
             </div>
             <div className="flex gap-2">
@@ -370,8 +383,8 @@ Key Requirements:
                 title="Clear Image"
                 disabled={!image}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                🗑️ Clear
+                <span className="text-[16pt]">🆑</span>
+                CLEAR
               </button>
             </div>
           </div>
@@ -463,12 +476,45 @@ Key Requirements:
 
         {/* Right: Interaction Panel */}
         <aside className="w-[400px] shrink-0 flex flex-col gap-6 h-full">
+          {/* Cost Estimation Panel */}
+          <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-[1.5rem] backdrop-blur-sm relative overflow-hidden group">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500/60 mb-1 flex items-center gap-2">
+                  💰 Estimated Project Cost
+                </h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-mono font-black text-emerald-400">
+                    ${(0.05 + (scriptLines.length * 0.01)).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">USD</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-mono font-black text-white/80">
+                  {Math.round((0.05 + (scriptLines.length * 0.01)) * 25450).toLocaleString()} <span className="text-[10px] text-slate-600">VND</span>
+                </div>
+                <p className="text-[9px] text-slate-500 italic mt-0.5">Approx. Cloud Compute</p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                <p className="text-[8px] uppercase tracking-widest text-slate-600 mb-1">Base Provision</p>
+                <p className="text-[10px] font-mono text-slate-400">$0.05</p>
+              </div>
+              <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                <p className="text-[8px] uppercase tracking-widest text-slate-600 mb-1">Vocal Synthesis</p>
+                <p className="text-[10px] font-mono text-slate-400">${(scriptLines.length * 0.01).toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Character Map */}
           <div className="p-5 bg-[#101010] border border-white/10 rounded-[1.5rem] backdrop-blur-sm relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-              <div className="w-1 h-3 bg-cyan-400 rounded-full"></div>
-              🗺️ Entity Map
+              <span className="text-[16pt]">👬</span>
+              ENTITY MAP
             </h3>
             <div className="space-y-2">
               {characters.length === 0 ? (
@@ -497,8 +543,8 @@ Key Requirements:
             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/[0.02] relative z-10">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                <div className="w-1 h-3 bg-fuchsia-400 rounded-full"></div>
-                💬 Dialogue Script
+                <span className="text-[24pt]">🕵️</span>
+                DIALOGUE SCRIPT
               </h3>
               {status === 'generating' && (
                  <span className="text-[10px] text-cyan-400 font-mono flex items-center gap-2 animate-pulse">
@@ -549,27 +595,37 @@ Key Requirements:
                                 ))}
                               </select>
 
-                              <div className="flex items-center gap-1 ml-4 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
+                              <div className="flex flex-wrap items-center gap-1 ml-4 bg-white/5 rounded-lg px-2 py-1 border border-white/5">
+                                <select 
+                                  value={line.ageRange}
+                                  onChange={(e) => updateScriptField(line.id, 'ageRange', e.target.value)}
+                                  className="bg-transparent border-none text-[8px] font-bold uppercase tracking-widest text-emerald-400 focus:outline-none cursor-pointer"
+                                >
+                                  <option value="youth" className="bg-[#050508]">Youthful</option>
+                                  <option value="middle" className="bg-[#050508]">Middle-aged</option>
+                                  <option value="old" className="bg-[#050508]">Old adult</option>
+                                </select>
+                                <span className="text-[8px] text-white/10">|</span>
+                                <select 
+                                  value={line.accentDetail}
+                                  onChange={(e) => updateScriptField(line.id, 'accentDetail', e.target.value)}
+                                  className="bg-transparent border-none text-[8px] font-bold uppercase tracking-widest text-amber-400 focus:outline-none cursor-pointer"
+                                >
+                                  <option value="north-std" className="bg-[#050508]">North: Standard</option>
+                                  <option value="north-hn" className="bg-[#050508]">North: Hanoi</option>
+                                  <option value="central-hue" className="bg-[#050508]">Central: Hue</option>
+                                  <option value="south-hcm" className="bg-[#050508]">South: HCM</option>
+                                  <option value="south-sw" className="bg-[#050508]">SouthWestern: Ca Mau</option>
+                                </select>
+                                <span className="text-[8px] text-white/10">|</span>
                                 <select 
                                   value={line.voiceStyle}
-                                  onChange={(e) => updateScriptVoice(line.id, 'voiceStyle', e.target.value)}
-                                  className="bg-transparent border-none text-[8px] font-bold uppercase tracking-widest text-slate-400 focus:outline-none cursor-pointer"
+                                  onChange={(e) => updateScriptField(line.id, 'voiceStyle', e.target.value)}
+                                  className="bg-transparent border-none text-[8px] font-bold uppercase tracking-widest text-slate-400 focus:outline-none cursor-pointer max-w-[80px]"
                                 >
                                   {voiceStyles.map(style => (
                                     <option key={style} value={style} className="bg-[#050508]">{style}</option>
                                   ))}
-                                </select>
-                                <span className="text-[8px] text-white/10">|</span>
-                                <select 
-                                  value={line.voiceAccent}
-                                  onChange={(e) => updateScriptVoice(line.id, 'voiceAccent', e.target.value)}
-                                  className="bg-transparent border-none text-[8px] font-bold uppercase tracking-widest text-slate-400 focus:outline-none cursor-pointer"
-                                >
-                                  <option value="natural" className="bg-[#050508]">Natural</option>
-                                  <option value="north" className="bg-[#050508]">North</option>
-                                  <option value="hue" className="bg-[#050508]">Hue</option>
-                                  <option value="central" className="bg-[#050508]">Central</option>
-                                  <option value="south" className="bg-[#050508]">South</option>
                                 </select>
                               </div>
                             </div>
@@ -613,8 +669,8 @@ Key Requirements:
             <div className="p-6 border-t border-white/10 bg-black/60 backdrop-blur-2xl relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                  <div className="w-1 h-2 bg-emerald-400 rounded-full"></div>
-                  📺 Global Output
+                  <span className="text-[16pt]">🎥</span>
+                  GLOBAL OUTPUT
                 </h3>
                 <span className="text-[9px] text-slate-600 italic">Avoid famous people/copyrighted content</span>
               </div>

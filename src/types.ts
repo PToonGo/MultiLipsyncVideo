@@ -16,7 +16,8 @@ export interface ScriptLine {
   characterId: string;
   text: string;
   voiceStyle: string;
-  voiceAccent: 'natural' | 'north' | 'central' | 'hue' | 'south';
+  ageRange: 'old' | 'middle' | 'youth';
+  accentDetail: 'north-std' | 'north-hn' | 'central-hue' | 'south-hcm' | 'south-sw';
 }
 
 export type GenerationStatus = 'idle' | 'uploading' | 'generating' | 'success' | 'error';
